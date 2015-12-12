@@ -4,12 +4,27 @@ from django.core.exceptions import ImproperlyConfigured
 
 from shibboleth.app_settings import SHIB_ATTRIBUTE_MAP, LOGOUT_SESSION_KEY
 
+import logging
+logger = logging.getLogger(__name__)
+
 class ShibbolethRemoteUserMiddleware(RemoteUserMiddleware):
+    header = 'REMOTE_USER'
+    
     """
     Authentication Middleware for use with Shibboleth.  Uses the recommended pattern
     for remote authentication from: http://code.djangoproject.com/svn/django/tags/releases/1.3/django/contrib/auth/middleware.py
     """
     def process_request(self, request):
+        logger.debug('ShibbolethRemoteUserMiddleware {}'.format(self.header))
+        logger.debug('ShibbolethRemoteUserMiddleware {}'.format(request.META.get(self.header, 'no REMOTE_USER')))
+        
+        #smetas = request.META
+        #for smeta in smetas:
+        #    logger.info('META {}={}'.format(smeta, smetas[smeta]))
+        
+        if 'shib' in request.session:
+            logger.debug(request.session['shib'])
+        
         # AuthenticationMiddleware is required so that request.user exists.
         if not hasattr(request, 'user'):
             raise ImproperlyConfigured(
@@ -21,11 +36,13 @@ class ShibbolethRemoteUserMiddleware(RemoteUserMiddleware):
 
         #To support logout.  If this variable is True, do not
         #authenticate user and return now.
+        logger.debug('LOGOUT_SESSION_KEY={}'.format(LOGOUT_SESSION_KEY))
         if request.session.get(LOGOUT_SESSION_KEY) == True:
+            logger.debug('LOGOUT_SESSION_KEY True')
             return
         else:
             #Delete the shib reauth session key if present.
-	        request.session.pop(LOGOUT_SESSION_KEY, None)
+            request.session.pop(LOGOUT_SESSION_KEY, None)
 
         #Locate the remote user header.
         try:
@@ -38,6 +55,7 @@ class ShibbolethRemoteUserMiddleware(RemoteUserMiddleware):
         # If the user is already authenticated and that user is the user we are
         # getting passed in the headers, then the correct user is already
         # persisted in the session and we don't need to continue.
+        logger.debug('User: {}'.format(request.user))
         if request.user.is_authenticated():
             if request.user.username == self.clean_username(username, request):
                 return
@@ -52,15 +70,23 @@ class ShibbolethRemoteUserMiddleware(RemoteUserMiddleware):
 
         # We are seeing this user for the first time in this session, attempt
         # to authenticate the user.
-        user = auth.authenticate(remote_user=username, shib_meta=shib_meta)
+        logger.debug('authenticating {}'.format(username))
+        user = auth.authenticate(remote_user=username, 
+                                 shib_meta=shib_meta, 
+                                 appBrand=request.appBrand)
+        logger.debug('authenticate returned {}'.format(user))
         if user:
             # User is valid.  Set request.user and persist user in the session
             # by logging the user in.
             request.user = user
             auth.login(request, user)
-            user.set_unusable_password()
+            
+            # Don't set unusable password! That will prevent them from logging in to 1.x
+            # or even using the password change form. 
+            #user.set_unusable_password()
+            
             user.save()
-            # call make profile.
+            # Our signal handler does this so nothing to do here.
             self.make_profile(user, shib_meta)
             #setup session.
             self.setup_session(request)
@@ -90,6 +116,7 @@ class ShibbolethRemoteUserMiddleware(RemoteUserMiddleware):
         error = False
         meta = request.META
         for header, attr in SHIB_ATTRIBUTE_MAP.items():
+            logger.debug(attr)
             required, name = attr
             value = meta.get(header, None)
             shib_attrs[name] = value
