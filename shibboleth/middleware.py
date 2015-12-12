@@ -2,7 +2,7 @@ from django.contrib.auth.middleware import RemoteUserMiddleware
 from django.contrib import auth
 from django.core.exceptions import ImproperlyConfigured
 
-from shibboleth.app_settings import SHIB_ATTRIBUTE_MAP, LOGOUT_SESSION_KEY
+from shibboleth.app_settings import SHIB_ATTRIBUTE_MAP, LOGOUT_SESSION_KEY, SET_UNUSABLE_PASSWORD
 
 import logging
 logger = logging.getLogger(__name__)
@@ -81,12 +81,11 @@ class ShibbolethRemoteUserMiddleware(RemoteUserMiddleware):
             request.user = user
             auth.login(request, user)
             
-            # Don't set unusable password! That will prevent them from logging in to 1.x
-            # or even using the password change form. 
-            #user.set_unusable_password()
+            if(SET_UNUSABLE_PASSWORD):
+                user.set_unusable_password()
             
             user.save()
-            # Our signal handler does this so nothing to do here.
+            # call make profile. If signal handler does there is nothing to do here.
             self.make_profile(user, shib_meta)
             #setup session.
             self.setup_session(request)

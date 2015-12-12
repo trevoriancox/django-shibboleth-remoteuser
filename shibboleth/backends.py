@@ -1,6 +1,9 @@
+import re
 from django.db import connection
 from django.contrib.auth.models import User, Permission
 from django.contrib.auth.backends import RemoteUserBackend
+
+from shibboleth.app_settings import USERNAME_TRANSLATIONS
 
 import logging
 logger = logging.getLogger(__name__)
@@ -18,7 +21,6 @@ class ShibbolethRemoteUserBackend(RemoteUserBackend):
     """
 
     # Create a User object if not already in the database?
-    # ticket:1045 Create new student user
     create_unknown_user = True
 
     def authenticate(self, remote_user, shib_meta, appBrand):
@@ -32,10 +34,10 @@ class ShibbolethRemoteUserBackend(RemoteUserBackend):
         """
         
         logger.debug('ShibbolethRemoteUserBackend {}'.format(remote_user))
-        logger.debug('ShibbolethRemoteUserBackend {}'.format(appBrand))
         
         if not remote_user:
             return
+        
         user = None
         username = self.clean_username(remote_user)
         
@@ -48,7 +50,6 @@ class ShibbolethRemoteUserBackend(RemoteUserBackend):
             logger.debug('create_unknown_user {}'.format(username))
             logger.debug('shib_user_params {}'.format(repr(shib_user_params)))
             
-            # MySQL, be sure to use the READ COMMITTED isolation level rather than REPEATABLE READ (the default)
             user, created = User.objects.get_or_create(username=username, defaults=shib_user_params)
             if created:
                 logger.debug('create_unknown_user: created')
@@ -59,38 +60,25 @@ class ShibbolethRemoteUserBackend(RemoteUserBackend):
                 user.set_password(User.objects.make_random_password()) # doesn't save
                 user.save() # save password
                 
-                #user.new_admin_org = appBrand.organization # will be copied to profile by signal handler
                 up = user.userprofile
-                #logger.debug(up)
-                #logger.debug(appBrand.organization)
                 up.organization = appBrand.organization
                 up.save()
         else:
             try:
-                # Our only criteria is username since that is unique across all apps.
-                user = User.objects.get(username=username) #, **shib_user_params)
+                user = User.objects.get(username=username)
             except User.DoesNotExist:
                 logger.info('ShibbolethRemoteUserBackend User.DoesNotExist')
                 pass
         #logger.debug('authenticate returning {}'.format(user))
         return user
 
-    def clean_username(self, username):
-        """
-        Performs any cleaning on the "username" prior to using it to get or
-        create the user object.  Returns the cleaned username.
+def clean_username(self, username):
+    """
+    Performs any cleaning on the "username" prior to using it to get or
+    create the user object.  Returns the cleaned username.
+    """
+    
+    for pattern in USERNAME_TRANSLATIONS:
+        username = re.sub(pattern, USERNAME_TRANSLATIONS[pattern], username, 1)
 
-        By default, returns the username unchanged.
-        
-        Added hack for BC SD36
-        """
-        
-        # Hack for BC SD36 staff. Wouldn't be needed if they add 
-        # email attribute to use instead of upn.
-        domain = '@sd36.bc.ca'
-        #logger.debug(username[0-len(domain):])
-        if username[0-len(domain):] == domain:
-            username = username[:len(username)-len(domain)] + '@surreyschools.ca'
-        #logger.debug(username)
-        
-        return username
+    return username

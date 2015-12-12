@@ -3,6 +3,8 @@ Adapted from LA Times datadesk credit to Ben Welsh.
 
 http://datadesk.latimes.com/posts/2012/06/test-your-django-app-with-travisci/
 
+TODO: update for Django 1.8 (django.test.simple no longer exists)
+
 """
 
 import os
