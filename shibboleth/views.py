@@ -71,9 +71,10 @@ class ShibbolethLogoutView(TemplateView):
         #Shibboleth reauthentication.
         self.request.session[LOGOUT_SESSION_KEY] = True
         #Get target url in order of preference.
+        target_param = self.request.GET.get(self.redirect_field_name)
         target = LOGOUT_REDIRECT_URL or\
-                 quote(self.request.GET.get(self.redirect_field_name)) or\
-                 quote(request.build_absolute_uri())
+                 quote(target_param if target_param else\
+                       self.request.build_absolute_uri())
         logout = LOGOUT_URL % target
         return redirect(logout)
 
