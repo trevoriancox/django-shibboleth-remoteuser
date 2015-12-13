@@ -8,23 +8,18 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ShibbolethRemoteUserMiddleware(RemoteUserMiddleware):
-    header = 'REMOTE_USER'
-    
     """
     Authentication Middleware for use with Shibboleth.  Uses the recommended pattern
     for remote authentication from: http://code.djangoproject.com/svn/django/tags/releases/1.3/django/contrib/auth/middleware.py
     """
     def process_request(self, request):
-        logger.debug('ShibbolethRemoteUserMiddleware {}'.format(self.header))
-        logger.debug('ShibbolethRemoteUserMiddleware {}'.format(request.META.get(self.header, 'no REMOTE_USER')))
-        
         #smetas = request.META
         #for smeta in smetas:
         #    logger.info('META {}={}'.format(smeta, smetas[smeta]))
-        
+
         if 'shib' in request.session:
-            logger.debug(request.session['shib'])
-        
+            logger.debug('session.shib: %s', request.session['shib'])
+
         # AuthenticationMiddleware is required so that request.user exists.
         if not hasattr(request, 'user'):
             raise ImproperlyConfigured(
@@ -48,6 +43,8 @@ class ShibbolethRemoteUserMiddleware(RemoteUserMiddleware):
         try:
             username = request.META[self.header]
         except KeyError:
+            # This is normal if we are intercepting a non-Shibboleth path.
+            logger.debug('username key not in META: %s', self.header)
             # If specified header doesn't exist then return (leaving
             # request.user set to AnonymousUser by the
             # AuthenticationMiddleware).
@@ -55,7 +52,7 @@ class ShibbolethRemoteUserMiddleware(RemoteUserMiddleware):
         # If the user is already authenticated and that user is the user we are
         # getting passed in the headers, then the correct user is already
         # persisted in the session and we don't need to continue.
-        logger.debug('User: {}'.format(request.user))
+        logger.debug('Existing request.user: {}'.format(request.user))
         if request.user.is_authenticated():
             if request.user.username == self.clean_username(username, request):
                 return
@@ -115,7 +112,6 @@ class ShibbolethRemoteUserMiddleware(RemoteUserMiddleware):
         error = False
         meta = request.META
         for header, attr in SHIB_ATTRIBUTE_MAP.items():
-            logger.debug(attr)
             required, name = attr
             value = meta.get(header, None)
             shib_attrs[name] = value

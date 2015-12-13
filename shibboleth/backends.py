@@ -33,13 +33,13 @@ class ShibbolethRemoteUserBackend(RemoteUserBackend):
         object with the given username is not found in the database.
         """
         
-        logger.debug('ShibbolethRemoteUserBackend {}'.format(remote_user))
-        
+        logger.debug('ShibbolethRemoteUserBackend remote_user={}'.format(remote_user))
         if not remote_user:
             return
         
         user = None
         username = self.clean_username(remote_user)
+        logger.debug('ShibbolethRemoteUserBackend clean_username={}'.format(remote_user))
         
         shib_user_params = dict([(k, shib_meta[k]) for k in User._meta.get_all_field_names() if k in shib_meta])
         # logger.debug(repr(shib_user_params))
@@ -72,13 +72,14 @@ class ShibbolethRemoteUserBackend(RemoteUserBackend):
         #logger.debug('authenticate returning {}'.format(user))
         return user
 
-def clean_username(self, username):
-    """
-    Performs any cleaning on the "username" prior to using it to get or
-    create the user object.  Returns the cleaned username.
-    """
+    def clean_username(self, username):
+        """
+        Performs any cleaning on the "username" prior to using it to get or
+        create the user object.  Returns the cleaned username.
+        """
     
-    for pattern in USERNAME_TRANSLATIONS:
-        username = re.sub(pattern, USERNAME_TRANSLATIONS[pattern], username, 1)
-
-    return username
+        for pattern in USERNAME_TRANSLATIONS:
+            logger.debug('clean_username sub %s', pattern)
+            username = re.sub(pattern, USERNAME_TRANSLATIONS[pattern], username, 1)
+    
+        return username
