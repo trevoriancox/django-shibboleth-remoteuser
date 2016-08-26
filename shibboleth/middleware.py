@@ -33,7 +33,7 @@ class ShibbolethRemoteUserMiddleware(RemoteUserMiddleware):
         #authenticate user and return now.
         logger.debug('LOGOUT_SESSION_KEY={}'.format(LOGOUT_SESSION_KEY))
         if request.session.get(LOGOUT_SESSION_KEY) == True:
-            logger.debug('LOGOUT_SESSION_KEY True')
+            #logger.debug('LOGOUT_SESSION_KEY True')
             return
         else:
             #Delete the shib reauth session key if present.
@@ -44,7 +44,7 @@ class ShibbolethRemoteUserMiddleware(RemoteUserMiddleware):
             username = request.META[self.header]
         except KeyError:
             # This is normal if we are intercepting a non-Shibboleth path.
-            logger.debug('username key not in META: %s', self.header)
+            #logger.debug('username key not in META: %s', self.header)
             # If specified header doesn't exist then return (leaving
             # request.user set to AnonymousUser by the
             # AuthenticationMiddleware).

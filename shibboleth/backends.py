@@ -71,6 +71,17 @@ class ShibbolethRemoteUserBackend(RemoteUserBackend):
                 pass
         #logger.debug('authenticate returning {}'.format(user))
         return user
+    
+    def configure_user(self, user):
+        """
+        If the username is an email address, set the email to match.
+        Note that we may change the username in clean_username.
+        """
+        
+        if '@' in user.username and user.email != user.username:
+            user.email = user.username
+        
+        return user
 
     def clean_username(self, username):
         """
