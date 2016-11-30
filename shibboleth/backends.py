@@ -13,15 +13,10 @@ class ShibbolethRemoteUserBackend(RemoteUserBackend):
     This backend is to be used in conjunction with the ``RemoteUserMiddleware``
     found in the middleware module of this package, and is used when the server
     is handling authentication outside of Django.
-
-    By default, the ``authenticate`` method creates ``User`` objects for
-    usernames that don't already exist in the database.  Subclasses can disable
-    this behavior by setting the ``create_unknown_user`` attribute to
-    ``False``.
     """
 
     # Create a User object if not already in the database?
-    create_unknown_user = True
+    #create_unknown_user = True
 
     def authenticate(self, remote_user, shib_meta, appBrand):
         """
@@ -46,7 +41,7 @@ class ShibbolethRemoteUserBackend(RemoteUserBackend):
         # Note that this could be accomplished in one try-except clause, but
         # instead we use get_or_create when creating unknown users since it has
         # built-in safeguards for multiple threads.
-        if self.create_unknown_user:
+        if appBrand and appBrand.shouldCreateUser(username):
             logger.debug('create_unknown_user {}'.format(username))
             logger.debug('shib_user_params {}'.format(repr(shib_user_params)))
             
