@@ -1,6 +1,7 @@
 import re
 from django.db import connection
-from django.contrib.auth.models import User, Permission
+from django.contrib.auth.models import Permission
+from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import RemoteUserBackend
 
 from shibboleth.app_settings import USERNAME_TRANSLATIONS
@@ -36,7 +37,7 @@ class ShibbolethRemoteUserBackend(RemoteUserBackend):
         username = self.clean_username(remote_user)
         logger.debug('ShibbolethRemoteUserBackend clean_username={}'.format(remote_user))
         
-        shib_user_params = dict([(k, shib_meta[k]) for k in User._meta.get_all_field_names() if k in shib_meta])
+        shib_user_params = dict([(k, shib_meta[k]) for k in get_user_model()._meta.get_all_field_names() if k in shib_meta])
         # logger.debug(repr(shib_user_params))
         # Note that this could be accomplished in one try-except clause, but
         # instead we use get_or_create when creating unknown users since it has
@@ -45,14 +46,14 @@ class ShibbolethRemoteUserBackend(RemoteUserBackend):
             logger.debug('create_unknown_user {}'.format(username))
             logger.debug('shib_user_params {}'.format(repr(shib_user_params)))
             
-            user, created = User.objects.get_or_create(username=username, defaults=shib_user_params)
+            user, created = get_user_model().objects.get_or_create(username=username, defaults=shib_user_params)
             if created:
                 logger.debug('create_unknown_user: created')
                 # this does nothing in RemoteBackend:
                 user = self.configure_user(user)
 
                 # passing password in shib_user_params didn't work
-                user.set_password(User.objects.make_random_password()) # doesn't save
+                user.set_password(get_user_model().objects.make_random_password()) # doesn't save
                 user.save() # save password
                 
                 up = user.userprofile
@@ -60,8 +61,8 @@ class ShibbolethRemoteUserBackend(RemoteUserBackend):
                 up.save()
         else:
             try:
-                user = User.objects.get(username=username)
-            except User.DoesNotExist:
+                user = get_user_model().objects.get(username=username)
+            except get_user_model().DoesNotExist:
                 logger.info('ShibbolethRemoteUserBackend User.DoesNotExist')
                 pass
         #logger.debug('authenticate returning {}'.format(user))
