@@ -9,7 +9,7 @@ from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
 
-from urllib import quote
+from six.moves import urllib
 
 #Logout settings.
 from shibboleth.app_settings import LOGOUT_URL, LOGOUT_REDIRECT_URL, LOGOUT_SESSION_KEY
@@ -53,7 +53,7 @@ class ShibbolethLoginView(TemplateView):
     def get(self, *args, **kwargs):
         #Remove session value that is forcing Shibboleth reauthentication.
         self.request.session.pop(LOGOUT_SESSION_KEY, None)
-        login = settings.LOGIN_URL + '?target=%s' % quote(self.request.GET.get(self.redirect_field_name))
+        login = settings.LOGIN_URL + '?target=%s' % urllib.quote(self.request.GET.get(self.redirect_field_name))
         return redirect(login)
     
 class ShibbolethLogoutView(TemplateView):
@@ -73,9 +73,7 @@ class ShibbolethLogoutView(TemplateView):
         #Get target url in order of preference.
         target_param = self.request.GET.get(self.redirect_field_name)
         target = LOGOUT_REDIRECT_URL or\
-                 quote(target_param if target_param else\
+                 urllib.quote(target_param if target_param else\
                        self.request.build_absolute_uri())
         logout = LOGOUT_URL % target
         return redirect(logout)
-
-
